@@ -1,0 +1,92 @@
+services:
+  namesrv:
+    image: apache/rocketmq:5.3.1
+    container_name: rmqnamesrv
+    ports:
+      - 9876:9876
+    networks:
+      - rocketmq
+    command: sh mqnamesrv
+  broker:
+    image: apache/rocketmq:5.3.1
+    container_name: rmqbroker
+    ports:
+      - 10909:10909
+      - 10911:10911
+      - 10912:10912
+      - 8080:8080
+      - 8081:8081
+      - 5557:5557
+    volumes:
+      - ./broker.conf:/home/rocketmq/rocketmq-5.3.1/conf/broker.conf
+    environment:
+      - NAMESRV_ADDR=rmqnamesrv:9876
+    depends_on:
+      - namesrv
+    networks:
+      - rocketmq
+    command: sh mqbroker --enable-proxy
+  dashboard:
+    image: registry.cn-hangzhou.aliyuncs.com/cr-mirror/rocketmq-dashboard:latest-
+    container_name: rocketmq-dashboard
+    environment:
+      - "JAVA_OPTS= -Drocketmq.namesrv.addr=rmqnamesrv:9876"
+    ports:
+      - 8181:8080
+    depends_on:
+      - broker
+    networks:
+      - rocketmq
+  producer:
+    image: rocketmq-produce-demo
+    container_name: rocketmq-producer
+    environment:
+      - "ROCKETMQ_NAME_SERVER=rmqnamesrv:9876"
+    depends_on:
+      - broker
+    networks:
+      - rocketmq
+  consumer:
+    image: rocketmq-consume-demo
+    container_name: rocketmq-consumer
+    environment:
+      - "ROCKETMQ_NAME_SERVER=rmqnamesrv:9876"
+    depends_on:
+      - broker
+    networks:
+      - rocketmq
+  prometheus:
+    image: prom/prometheus:v3.0.1
+    container_name: prometheus
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - rocketmq
+    # If you want to expose these ports outside your dev PC,
+    # remove the "127.0.0.1:" prefix
+    ports:
+      - 9090:9090
+    # On MacOS, remove next line and replace localhost by host.docker.internal in prometheus/prometheus.yml and
+    # grafana/provisioning/datasources/datasource.yml
+    depends_on:
+      - broker
+  grafana:
+    image: grafana/grafana:11.4.0
+    container_name: grafana
+    networks:
+      - rocketmq
+    volumes:
+      - ./grafana/provisioning/:/etc/grafana/provisioning/
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_INSTALL_PLUGINS=grafana-piechart-panel
+    ports:
+      - 3000:3000
+    depends_on:
+      - prometheus
+networks:
+  rocketmq:
+    driver: bridge
