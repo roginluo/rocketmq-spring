@@ -41,6 +41,7 @@ services:
     image: rocketmq-produce-demo
     container_name: rocketmq-producer
     environment:
+      - "JAVA_TOOL_OPTIONS=-Xmx512m -Xms256m"
       - "ROCKETMQ_NAME_SERVER=rmqnamesrv:9876"
     depends_on:
       - broker
@@ -50,6 +51,7 @@ services:
     image: rocketmq-consume-demo
     container_name: rocketmq-consumer
     environment:
+      - "JAVA_TOOL_OPTIONS=-Xmx512m -Xms256m"
       - "ROCKETMQ_NAME_SERVER=rmqnamesrv:9876"
     depends_on:
       - broker
